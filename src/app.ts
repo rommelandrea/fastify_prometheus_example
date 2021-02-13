@@ -1,6 +1,7 @@
 import fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { IncomingMessage, Server, ServerResponse } from 'http';
 import FastifyMetrics from 'fastify-metrics';
+import pino from 'pino';
 
 /**
  * Application server instance.
@@ -33,24 +34,20 @@ export default class App {
    */
   constructor() {
     this.port = process.env.PORT || 3000;
+
     this.app = fastify({
       ignoreTrailingSlash: true,
-      logger: {
-        level: 'fatal',
-      },
+      logger: pino({
+        level: 'debug',
+        messageKey: 'message',
+      }),
     });
+
+    // Import configurations
     this.config();
 
-    this.start();
-
-    this.app.get('/ping', async (request: FastifyRequest, reply: FastifyReply) => {
-      reply
-          .header('Content-Type', 'application/json; charset=utf-8')
-          .send({
-            'success': true,
-            'data': 'pong',
-          });
-    });
+    // Import routes
+    this.routes();
   }
 
   /**
@@ -61,7 +58,7 @@ export default class App {
   public async start() {
     await this.app.listen(this.port as number, '0.0.0.0').catch(console.log);
 
-    this.app.log.info('Server listening on port', this.app.server.address());
+    // this.app.log.info('Server listening on port', this.app.server.address());
 
     process.on('uncaughtException', console.error);
 
@@ -84,23 +81,29 @@ export default class App {
   private config() {
     if (process.env.NODE_ENV !== 'production') {
       this.app.setErrorHandler(async (err, _req, _res) => {
-        console.log(err);
+        this.app.log.error(err.message);
       });
     }
-
-    this.app.addHook('onRequest', (req, res, next) => {
-      // remove trailing slash
-      if (req.url.endsWith('/') && req.url !== '/') {
-        res.raw.writeHead(301, { Location: 'http://' + req.headers['host'] + req.url.slice(0, -1) });
-        res.raw.end();
-      }
-
-      next();
-    });
-
     this.app.register(FastifyMetrics, {
       endpoint: '/metrics',
       prefix: 'fastify',
+    });
+  }
+
+  /**
+   * Simple route to test Fastify
+   *
+   * @private
+   * @memberof App
+   */
+  private routes() {
+    this.app.get('/ping', async (request: FastifyRequest, reply: FastifyReply) => {
+      reply
+          .header('Content-Type', 'application/json; charset=utf-8')
+          .send({
+            'success': true,
+            'data': 'pong',
+          });
     });
   }
 }
