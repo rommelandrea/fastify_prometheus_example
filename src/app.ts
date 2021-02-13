@@ -2,6 +2,7 @@ import fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { IncomingMessage, Server, ServerResponse } from 'http';
 import FastifyMetrics from 'fastify-metrics';
 import pino from 'pino';
+import dotenv from 'dotenv';
 
 /**
  * Application server instance.
@@ -33,12 +34,14 @@ export default class App {
    * @memberof App
    */
   constructor() {
+    dotenv.config();
+
     this.port = process.env.PORT || 3000;
 
     this.app = fastify({
       ignoreTrailingSlash: true,
       logger: pino({
-        level: 'debug',
+        level: process.env.LOG_LEVEL || 'debug',
         messageKey: 'message',
       }),
     });
@@ -56,7 +59,7 @@ export default class App {
    * @memberof App
    */
   public async start() {
-    await this.app.listen(this.port as number, '0.0.0.0').catch(console.log);
+    await this.app.listen(this.port as number, process.env.HOST || '0.0.0.0').catch(console.log);
 
     // this.app.log.info('Server listening on port', this.app.server.address());
 
